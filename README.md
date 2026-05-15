@@ -210,7 +210,6 @@ DATA-SEAL checks submitted personal data against public breach databases:
 ## 🙏 Acknowledgements
 
 - [Have I Been Pwned](https://haveibeenpwned.com) — Breach database reference
-- [OWASP](https://owasp.org) — Security best practices
 - [Node.js](https://nodejs.org) & [Express.js](https://expressjs.com) — Core framework
 - [Railway](https://railway.app) — Cloud deployment platform
 
