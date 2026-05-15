@@ -197,6 +197,29 @@
       max-width: 100%;
       max-height: 300px;
       border-radius: 12px;
+      pointer-events: none;
+      user-select: none;
+    }
+
+    .debug-info {
+      font-size: 0.6rem;
+      color: var(--text-3);
+      margin-top: 10px;
+      padding: 5px;
+      background: rgba(0,0,0,0.3);
+      border-radius: 8px;
+      word-break: break-all;
+    }
+
+    .no-download-badge {
+      display: inline-block;
+      background: rgba(255,45,85,0.15);
+      border: 1px solid var(--red);
+      border-radius: 20px;
+      padding: 4px 12px;
+      font-size: 0.65rem;
+      color: var(--red);
+      margin-top: 10px;
     }
 
     .info-badge {
@@ -260,10 +283,14 @@
     <div id="contentContainer">
       <p style="color: var(--text-2);">Chargement du message...</p>
     </div>
+    <div class="no-download-badge">
+      ⛔ Téléchargement désactivé · Lecture unique uniquement
+    </div>
     <div class="info-badge">
       <span>🔐 Chiffré AES-256</span>
       <span>🗑️ Autodestruction après lecture</span>
       <span>👁️ Zéro trace</span>
+      <span>⛔ Pas de téléchargement</span>
     </div>
   </div>
 
@@ -351,71 +378,153 @@
   }
   loop();
 
-  // ========== LOGIQUE BACKEND ==========
+  // ========== LOGIQUE BACKEND ULTRA ROBUSTE ==========
   
   function getMessageId() {
     const urlParams = new URLSearchParams(window.location.search);
     return urlParams.get('id');
   }
 
-  function displayContent(type, content) {
-
-  switch(type) {
-
-    case 'text':
-      return `
-        <div class="message-content">
-          📩 ${escapeHtml(content)}
-        </div>
-      `;
-
-    case 'image':
-      return `
-        <div class="message-content">
-          <img 
-            src="${content}" 
-            alt="Message image"
-            draggable="false"
-            style="max-width:100%; border-radius:12px;"
-          >
-        </div>
-      `;
-
-    case 'video':
-      return `
-        <div class="message-content">
-          <video 
-            autoplay
-            controls
-            controlsList="nodownload"
-            style="max-width:100%; border-radius:12px;"
-          >
-            <source src="${content}" type="video/mp4">
-          </video>
-        </div>
-      `;
-
-    case 'audio':
-      return `
-        <div class="message-content">
-          <audio controls controlsList="nodownload">
-            <source src="${content}">
-          </audio>
-        </div>
-      `;
-
-    default:
-      return `
-        <div class="message-content">
-          Contenu non reconnu
-        </div>
-      `;
+  // Détection intelligente du type à partir du contenu
+  function detectContentType(content) {
+    if (!content) return 'unknown';
+    
+    // Si c'est déjà une data URL
+    if (typeof content === 'string') {
+      if (content.startsWith('data:image/')) return 'image';
+      if (content.startsWith('data:video/')) return 'video';
+      if (content.startsWith('data:audio/')) return 'audio';
+      if (content.startsWith('data:application/pdf')) return 'pdf';
+      if (content.startsWith('data:text/plain')) return 'text';
+      
+      // Si ça ressemble à une URL d'image
+      if (content.match(/\.(jpg|jpeg|png|gif|webp|bmp)(\?|$)/i)) return 'image';
+      if (content.match(/\.(mp4|webm|ogg|mov)(\?|$)/i)) return 'video';
+      if (content.match(/\.(mp3|wav|ogg|flac)(\?|$)/i)) return 'audio';
+      if (content.match(/\.(pdf)(\?|$)/i)) return 'pdf';
+      
+      // Vérifier si c'est du texte simple (pas trop long et pas de base64 géant)
+      if (content.length < 5000 && !content.includes('base64,')) return 'text';
+    }
+    
+    return 'file';
   }
-}
+
+  function displayContent(content, detectedType, fileName = null) {
+    const debugInfo = `<div class="debug-info">Type détecté: ${detectedType} | Fichier: ${fileName || 'Non spécifié'}</div>`;
+    
+    switch(detectedType) {
+      case 'text':
+        return `
+          <div class="message-content">
+            📩 ${escapeHtml(content)}
+            <div style="font-size: 0.7rem; margin-top: 10px; color: var(--text-3);">
+              🔒 Lecture unique · Pas de téléchargement
+            </div>
+            ${debugInfo}
+          </div>
+        `;
+      
+      case 'image':
+        return `
+          <div class="message-content">
+            <img 
+              src="${content}" 
+              alt="Message image"
+              draggable="false"
+              style="max-width:100%; border-radius:12px; user-select: none;"
+              oncontextmenu="return false"
+              onerror="this.onerror=null; this.parentElement.innerHTML='<div style=\"padding:20px\">❌ Image non disponible ou corrompue</div>'"
+            >
+            <div style="font-size: 0.7rem; margin-top: 10px; color: var(--text-3);">
+              🔒 Image à usage unique · Pas de téléchargement
+            </div>
+            ${debugInfo}
+          </div>
+        `;
+      
+      case 'video':
+        return `
+          <div class="message-content">
+            <video 
+              controls
+              controlsList="nodownload noplaybackrate"
+              disablepictureinpicture
+              style="max-width:100%; border-radius:12px;"
+              oncontextmenu="return false"
+              onerror="this.onerror=null; this.parentElement.innerHTML='<div style=\"padding:20px\">❌ Vidéo non disponible ou corrompue</div>'"
+            >
+              <source src="${content}" type="video/mp4">
+              Votre navigateur ne supporte pas la lecture vidéo.
+            </video>
+            <div style="font-size: 0.7rem; margin-top: 10px; color: var(--text-3);">
+              🔒 Vidéo à usage unique · Pas de téléchargement
+            </div>
+            ${debugInfo}
+          </div>
+        `;
+      
+      case 'audio':
+        return `
+          <div class="message-content">
+            <audio controls controlsList="nodownload" style="width: 100%;">
+              <source src="${content}">
+              Votre navigateur ne supporte pas la lecture audio.
+            </audio>
+            <div style="font-size: 0.7rem; margin-top: 10px; color: var(--text-3);">
+              🔒 Audio à usage unique · Pas de téléchargement
+            </div>
+            ${debugInfo}
+          </div>
+        `;
+      
+      case 'pdf':
+        return `
+          <div class="message-content">
+            <div style="text-align: center;">
+              📄 <strong>Document PDF</strong><br>
+              <small>${fileName || 'Document confidentiel'}</small>
+              <div style="margin-top: 15px; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 8px;">
+                🔒 Visualisation temporaire uniquement<br>
+                <span style="font-size: 0.7rem;">Le téléchargement est désactivé pour des raisons de sécurité</span>
+              </div>
+              <div style="margin-top: 10px;">
+                <embed src="${content}" type="application/pdf" width="100%" height="300" style="border-radius: 8px;">
+              </div>
+            </div>
+            ${debugInfo}
+          </div>
+        `;
+      
+      default:
+        // Tentative d'afficher comme image si ça ressemble à une URL d'image
+        if (content && typeof content === 'string' && (content.match(/\.(jpg|jpeg|png|gif|webp)/i) || content.startsWith('data:image'))) {
+          return displayContent(content, 'image', fileName);
+        }
+        // Tentative d'afficher comme vidéo
+        if (content && typeof content === 'string' && (content.match(/\.(mp4|webm)/i) || content.startsWith('data:video'))) {
+          return displayContent(content, 'video', fileName);
+        }
+        
+        return `
+          <div class="message-content">
+            <div style="text-align: center;">
+              📁 <strong>Document reçu</strong><br>
+              <small>${fileName || 'Document confidentiel'}</small>
+              <div style="margin-top: 15px; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 8px;">
+                🔒 Lecture unique uniquement<br>
+                <span style="font-size: 0.7rem;">Ce contenu ne peut être consulté que via ce lien unique</span>
+              </div>
+            </div>
+            ${debugInfo}
+          </div>
+        `;
+    }
+  }
 
   function escapeHtml(str) {
     if (!str) return '';
-    return str.replace(/[&<>]/g, function(m) {
+    return String(str).replace(/[&<>]/g, function(m) {
       if (m === '&') return '&amp;';
       if (m === '<') return '&lt;';
       if (m === '>') return '&gt;';
@@ -462,7 +571,25 @@
       }
       messageConsumed = true;
       
-      const contentHtml = displayContent(data.type, data.content);
+      // Extraction du contenu
+      let rawContent = data.content || data.data || data;
+      let contentType = data.type || data.mimeType || null;
+      let fileName = data.fileName || data.name || null;
+      
+      // Si le contenu est un objet, essayer d'extraire la partie utile
+      if (rawContent && typeof rawContent === 'object') {
+        if (rawContent.content) rawContent = rawContent.content;
+        else if (rawContent.data) rawContent = rawContent.data;
+        else rawContent = JSON.stringify(rawContent);
+      }
+      
+      // Détection automatique du type si non fourni ou invalide
+      let detectedType = contentType;
+      if (!detectedType || detectedType === 'unknown' || detectedType === 'file') {
+        detectedType = detectContentType(rawContent);
+      }
+      
+      const contentHtml = displayContent(rawContent, detectedType, fileName);
       document.getElementById('contentContainer').innerHTML = contentHtml;
       
     } catch (error) {
@@ -470,7 +597,8 @@
       document.getElementById('contentContainer').innerHTML = `
         <div class="message-content" style="color: var(--red);">
           ❌ Erreur de connexion au serveur<br>
-          Vérifiez que le backend est lancé.
+          Vérifiez que le backend est lancé.<br>
+          <div class="debug-info">${error.message}</div>
         </div>
       `;
     }
