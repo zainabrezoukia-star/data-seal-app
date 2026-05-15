@@ -568,6 +568,7 @@
     showLoading();
     try {
       const result = await checkEmail(email);
+      console.log(result);
       if (result.breached) {
         let sitesHtml = '<ul class="sites-list">';
         result.sites.forEach(site => { sitesHtml += `<li>⚠️ ${site.name}</li>`; });
