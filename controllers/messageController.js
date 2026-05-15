@@ -7,18 +7,38 @@ const createMessage = (req, res) => {
 
     const { content } = req.body;
 
-    const file = req.file ? req.file.filename : null;
+    let type = 'text';
+    let messageContent = content;
 
-    const type = file ? 'file' : 'text';
+    if (req.file) {
 
-    const messageContent = file || content;
+        const mimeType = req.file.mimetype;
+
+        if (mimeType.startsWith('image/')) {
+            type = 'image';
+
+        } else if (mimeType.startsWith('video/')) {
+            type = 'video';
+
+        } else if (mimeType.startsWith('audio/')) {
+            type = 'audio';
+
+        } else if (mimeType === 'application/pdf') {
+            type = 'pdf';
+
+        } else {
+            type = 'file';
+        }
+
+        messageContent = `/uploads/${req.file.filename}`;
+    }
 
     const id = storeMessage(type, messageContent);
 
     res.json({
         success: true,
         id,
-        link: `http://localhost:3000/api/messages/${id}`
+        link: `${req.protocol}://${req.get('host')}/receive.html?id=${id}`
     });
 };
 
