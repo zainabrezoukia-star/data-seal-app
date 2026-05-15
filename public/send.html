@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Data-Seal | Message éphémère</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:       #020812;
+      --bg-2:     #060e1f;
+      --cyan:     #00f5ff;
+      --cyan-d:   #00bcd4;
+      --blue:     #0066ff;
+      --purple:   #7b2fff;
+      --green:    #00ff88;
+      --red:      #ff2d55;
+      --text:     #e8f4ff;
+      --text-2:   rgba(232,244,255,0.55);
+      --text-3:   rgba(232,244,255,0.25);
+      --border:   rgba(0,245,255,0.12);
+      --border-h: rgba(0,245,255,0.35);
+      --r:        16px;
+      --r-lg:     28px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Space Grotesk', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+      cursor: none;
+    }
+
+    .cursor {
+      position: fixed;
+      width: 10px; height: 10px;
+      background: var(--cyan);
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 9999;
+      transform: translate(-50%,-50%);
+      transition: width .2s, height .2s;
+      mix-blend-mode: screen;
+      box-shadow: 0 0 10px var(--cyan), 0 0 30px rgba(0,245,255,.4);
+    }
+    .cursor-ring {
+      position: fixed;
+      width: 36px; height: 36px;
+      border: 1px solid rgba(0,245,255,.5);
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 9998;
+      transform: translate(-50%,-50%);
+      transition: all .12s ease;
+    }
+
+    #bg-canvas {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,245,255,.012) 2px, rgba(0,245,255,.012) 4px);
+      pointer-events: none;
+      z-index: 1;
+      animation: scanMove 8s linear infinite;
+    }
+    @keyframes scanMove {
+      0%   { background-position: 0 0; }
+      100% { background-position: 0 200px; }
+    }
+
+    .wrapper {
+      position: relative;
+      z-index: 2;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 3rem 2rem;
+    }
+
+    .status-bar {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: .6rem 2rem;
+      background: rgba(2,8,18,.85);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+      font-family: 'Space Mono', monospace;
+      font-size: .7rem;
+      color: var(--text-2);
+    }
+    .status-bar .dot {
+      display: inline-block;
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--green);
+      margin-right: 6px;
+      box-shadow: 0 0 8px var(--green);
+      animation: blink 2s infinite;
+    }
+    @keyframes blink {
+      0%,100%{ opacity:1; } 50%{ opacity:.3; }
+    }
+    .status-id { color: var(--cyan); }
+
+    .hero { text-align: center; margin-bottom: 2rem; margin-top: 2rem; }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: .5rem;
+      background: rgba(0,245,255,.07);
+      border: 1px solid rgba(0,245,255,.25);
+      border-radius: 99px;
+      padding: .35rem 1rem;
+      font-family: 'Space Mono', monospace;
+      font-size: .7rem;
+      color: var(--cyan);
+      letter-spacing: .12em;
+      margin-bottom: 1.5rem;
+      animation: fadeUp .6s ease both;
+    }
+    .badge-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--cyan);
+      box-shadow: 0 0 8px var(--cyan);
+      animation: blink 1.5s infinite;
+    }
+
+    .hero-title {
+      font-size: clamp(3rem, 6vw, 4.5rem);
+      font-weight: 700;
+      letter-spacing: -.04em;
+      line-height: 1;
+      margin-bottom: 1rem;
+      animation: fadeUp .6s .1s ease both;
+    }
+    .hero-title .word-data { color: var(--text); }
+    .hero-title .word-seal {
+      color: transparent;
+      -webkit-text-stroke: 1px var(--cyan);
+      text-shadow: 0 0 20px rgba(0,245,255,.3), 0 0 60px rgba(0,245,255,.15);
+    }
+
+    .hero-subtitle {
+      font-size: 1rem;
+      color: var(--text-2);
+      max-width: 500px;
+      margin: 0 auto;
+      line-height: 1.7;
+      animation: fadeUp .6s .2s ease both;
+    }
+
+    .form-card {
+      background: linear-gradient(135deg, rgba(6,14,31,.95), rgba(6,14,31,.8));
+      border: 1px solid var(--border);
+      border-radius: var(--r-lg);
+      padding: 2rem;
+      max-width: 650px;
+      width: 100%;
+      margin: 0 auto;
+      animation: fadeUp .6s .35s ease both;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 24px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 12px;
+      flex-wrap: wrap;
+    }
+    .tab {
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 40px;
+      padding: 8px 20px;
+      font-family: 'Space Mono', monospace;
+      font-size: 0.75rem;
+      color: var(--text-2);
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+    .tab.active {
+      background: rgba(0,245,255,0.15);
+      border-color: var(--cyan);
+      color: var(--cyan);
+      box-shadow: 0 0 10px rgba(0,245,255,0.2);
+    }
+    .tab:hover {
+      border-color: var(--cyan);
+      color: var(--cyan);
+    }
+
+    .tab-pane {
+      display: none;
+    }
+    .tab-pane.active {
+      display: block;
+      animation: fadeInUp 0.4s ease;
+    }
+
+    textarea {
+      width: 100%;
+      padding: 16px;
+      background: rgba(2,8,18,0.8);
+      border: 1px solid rgba(0,245,255,0.2);
+      border-radius: 16px;
+      font-family: 'Space Mono', monospace;
+      font-size: 0.95rem;
+      color: var(--text);
+      resize: vertical;
+      transition: all 0.3s ease;
+    }
+    textarea:focus {
+      outline: none;
+      border-color: var(--cyan);
+      box-shadow: 0 0 20px rgba(0,245,255,0.1);
+    }
+
+    .file-zone {
+      border: 2px dashed rgba(0,245,255,0.3);
+      border-radius: 20px;
+      padding: 30px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      background: rgba(2,8,18,0.6);
+    }
+    .file-zone:hover {
+      border-color: var(--cyan);
+      background: rgba(0,245,255,0.03);
+    }
+    .file-zone input {
+      display: none;
+    }
+    .preview {
+      margin-top: 20px;
+      text-align: center;
+    }
+    .preview img, .preview video {
+      max-width: 100%;
+      max-height: 200px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+    }
+    .preview .file-name {
+      font-size: 0.8rem;
+      color: var(--cyan);
+      margin-top: 8px;
+    }
+
+    .btn-generate {
+      width: 100%;
+      margin-top: 20px;
+      background: linear-gradient(135deg, var(--cyan), var(--blue));
+      border: none;
+      color: #020812;
+      font-weight: bold;
+      padding: 14px;
+      border-radius: 40px;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+    .btn-generate:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+    .btn-generate:hover:not(:disabled) {
+      transform: translateY(-3px);
+      box-shadow: 0 10px 30px rgba(0,245,255,0.3);
+    }
+
+    .link-box {
+      background: rgba(0,245,255,0.05);
+      border: 1px solid rgba(0,245,255,0.2);
+      border-radius: 20px;
+      padding: 20px;
+      margin-top: 24px;
+      animation: fadeInUp 0.5s ease;
+    }
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .link-box input {
+      width: 100%;
+      background: #020812;
+      border: 1px solid rgba(0,245,255,0.3);
+      border-radius: 12px;
+      padding: 14px;
+      color: var(--cyan);
+      font-family: 'Space Mono', monospace;
+      font-size: 0.8rem;
+    }
+    .btn-copy {
+      background: rgba(0,245,255,0.1);
+      border: 1px solid rgba(0,245,255,0.3);
+      color: var(--cyan);
+      margin-top: 12px;
+      width: 100%;
+      padding: 10px;
+      border-radius: 40px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+    .btn-copy:hover {
+      background: rgba(0,245,255,0.2);
+      transform: scale(1.02);
+    }
+
+    .security-badge {
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      margin-top: 20px;
+      font-size: 0.7rem;
+      color: var(--text-3);
+      flex-wrap: wrap;
+    }
+
+    .footer {
+      margin-top: 3rem;
+      text-align: center;
+    }
+    .footer a {
+      color: var(--cyan);
+      text-decoration: none;
+      font-family: 'Space Mono', monospace;
+      font-size: 0.8rem;
+    }
+
+    @keyframes fadeUp {
+      from { opacity:0; transform:translateY(24px); }
+      to { opacity:1; transform:translateY(0); }
+    }
+
+    @media(max-width:600px){
+      .hero-title { font-size: 2.5rem; }
+      .form-card { padding: 1.5rem; }
+      .security-badge { gap: 10px; flex-direction: column; align-items: center; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="cursor" id="cur"></div>
+<div class="cursor-ring" id="curRing"></div>
+<canvas id="bg-canvas"></canvas>
+
+<div class="status-bar">
+  <div><span class="dot"></span><span class="status-id">SYS-SEAL-2025</span> · Mode envoi sécurisé</div>
+  <div id="clock" style="font-size:.65rem;opacity:.6;"></div>
+</div>
+
+<div class="wrapper">
+  <div class="hero">
+    <div class="badge">
+      <span class="badge-dot"></span>
+      ENVOI SÉCURISÉ · CHIFFREMENT AES-256 · TOUS TYPES DE FICHIERS
+    </div>
+    <h1 class="hero-title">
+      <span class="word-data">Message</span><span class="word-seal"> éphémère</span>
+    </h1>
+    <p class="hero-subtitle">
+      Envoyez du texte, des images, des vidéos ou des documents. Après la première lecture, tout disparaît.
+    </p>
+  </div>
+
+  <div class="form-card">
+    <div class="tabs">
+      <div class="tab active" data-tab="text">📝 Texte</div>
+      <div class="tab" data-tab="image">🖼️ Image</div>
+      <div class="tab" data-tab="video">🎥 Vidéo</div>
+      <div class="tab" data-tab="file">📎 Document</div>
+    </div>
+
+    <div id="tab-text" class="tab-pane active">
+      <textarea id="message" rows="5" placeholder="Votre message secret..."></textarea>
+    </div>
+
+    <div id="tab-image" class="tab-pane">
+      <div class="file-zone" id="imageZone">
+        📸 Cliquez ou glissez une image (JPG, PNG, GIF)
+        <input type="file" id="imageInput" accept="image/jpeg,image/png,image/gif,image/webp">
+      </div>
+      <div id="imagePreview" class="preview"></div>
+    </div>
+
+    <div id="tab-video" class="tab-pane">
+      <div class="file-zone" id="videoZone">
+        🎬 Cliquez ou glissez une vidéo (MP4, MOV, AVI)
+        <input type="file" id="videoInput" accept="video/mp4,video/quicktime,video/x-msvideo">
+      </div>
+      <div id="videoPreview" class="preview"></div>
+    </div>
+
+    <div id="tab-file" class="tab-pane">
+      <div class="file-zone" id="fileZone">
+        📄 Cliquez ou glissez un document (PDF, DOC, ZIP)
+        <input type="file" id="fileInput" accept=".pdf,.doc,.docx,.zip,.txt">
+      </div>
+      <div id="filePreview" class="preview"></div>
+    </div>
+
+    <button id="generateBtn" class="btn-generate">🔒 GÉNÉRER LE LIEN</button>
+
+    <div id="result" style="display: none;">
+      <div class="link-box">
+        <p style="margin-bottom: 10px; font-family: 'Space Mono', monospace; font-size: 0.7rem; color: var(--cyan);">
+          ⚡ LIEN À USAGE UNIQUE
+        </p>
+        <input type="text" id="link" readonly>
+        <button id="copyBtn" class="btn-copy">📋 Copier le lien</button>
+        <div class="security-badge">
+          <span>🔐 Chiffré AES-256</span>
+          <span>🗑️ Autodestruction après lecture</span>
+          <span>👁️ Zéro trace</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <a href="index.html">← Retour à l'accueil</a>
+  </div>
+</div>
+
+<script>
+  // Horloge
+  function updateClock(){
+    const n=new Date();
+    document.getElementById('clock').textContent=n.toLocaleDateString('fr-FR')+' · '+n.toLocaleTimeString('fr-FR');
+  }
+  updateClock(); setInterval(updateClock,1000);
+
+  // Curseur personnalisé
+  const cur=document.getElementById('cur');
+  const ring=document.getElementById('curRing');
+  let mx=-100,my=-100,rx=-100,ry=-100;
+  document.addEventListener('mousemove',e=>{mx=e.clientX;my=e.clientY;});
+  function animCursor(){
+    cur.style.left=mx+'px'; cur.style.top=my+'px';
+    rx+=(mx-rx)*.14; ry+=(my-ry)*.14;
+    ring.style.left=rx+'px'; ring.style.top=ry+'px';
+    requestAnimationFrame(animCursor);
+  }
+  animCursor();
+
+  // Canvas fond
+  const canvas=document.getElementById('bg-canvas');
+  const ctx=canvas.getContext('2d');
+  let W,H,particles=[];
+
+  function resize(){
+    W=canvas.width=window.innerWidth;
+    H=canvas.height=window.innerHeight;
+  }
+  resize(); window.addEventListener('resize',resize);
+
+  function drawGrid(){
+    ctx.strokeStyle='rgba(0,245,255,0.04)';
+    ctx.lineWidth=1;
+    const sz=60;
+    for(let x=0;x<W;x+=sz){
+      ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke();
+    }
+    for(let y=0;y<H;y+=sz){
+      ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke();
+    }
+  }
+
+  for(let i=0;i<50;i++){
+    particles.push({
+      x:Math.random()*W, y:Math.random()*H,
+      r:Math.random()*1.5+.3,
+      dx:(Math.random()-.5)*.3, dy:(Math.random()-.5)*.3,
+      alpha:Math.random(),
+      color:'0,245,255'
+    });
+  }
+
+  let scanY=0;
+  function loop(){
+    ctx.clearRect(0,0,W,H);
+    drawGrid();
+    scanY=(scanY+1.5)%H;
+    const sg=ctx.createLinearGradient(0,scanY-40,0,scanY+40);
+    sg.addColorStop(0,'rgba(0,245,255,0)');
+    sg.addColorStop(.5,'rgba(0,245,255,0.04)');
+    sg.addColorStop(1,'rgba(0,245,255,0)');
+    ctx.fillStyle=sg;
+    ctx.fillRect(0,scanY-40,W,80);
+
+    particles.forEach(p=>{
+      p.x+=p.dx; p.y+=p.dy;
+      if(p.x<0)p.x=W; if(p.x>W)p.x=0;
+      if(p.y<0)p.y=H; if(p.y>H)p.y=0;
+      ctx.beginPath();
+      ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+      ctx.fillStyle=`rgba(${p.color},${p.alpha})`;
+      ctx.fill();
+    });
+    requestAnimationFrame(loop);
+  }
+  loop();
+
+  // Gestion des Tabs
+  let currentType = 'text';
+  let currentFile = null;
+
+  document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+      const tabId = tab.getAttribute('data-tab');
+      document.getElementById(`tab-${tabId}`).classList.add('active');
+      currentType = tabId;
+    });
+  });
+
+  // Image upload
+  const imageZone = document.getElementById('imageZone');
+  const imageInput = document.getElementById('imageInput');
+  imageZone.addEventListener('click', () => imageInput.click());
+  imageInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      currentFile = file;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        document.getElementById('imagePreview').innerHTML = `<img src="${ev.target.result}" alt="Aperçu"><div class="file-name">${file.name}</div>`;
+      };
+      reader.readAsDataURL(file);
+    }
+  });
+
+  // Video upload
+  const videoZone = document.getElementById('videoZone');
+  const videoInput = document.getElementById('videoInput');
+  videoZone.addEventListener('click', () => videoInput.click());
+  videoInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      currentFile = file;
+      const url = URL.createObjectURL(file);
+      document.getElementById('videoPreview').innerHTML = `<video controls><source src="${url}" type="${file.type}"></video><div class="file-name">${file.name}</div>`;
+    }
+  });
+
+  // Document upload
+  const fileZone = document.getElementById('fileZone');
+  const fileInput = document.getElementById('fileInput');
+  fileZone.addEventListener('click', () => fileInput.click());
+  fileInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      currentFile = file;
+      document.getElementById('filePreview').innerHTML = `<div class="file-name">📄 ${file.name} (${(file.size/1024).toFixed(1)} KB)</div>`;
+    }
+  });
+
+  // ========== APPELS BACKEND AVEC FORMDATA ==========
+
+  // Génération du lien (appel réel backend)
+  document.getElementById('generateBtn').addEventListener('click', async () => {
+    let hasContent = false;
+    const formData = new FormData();
+    
+    // Récupérer le contenu selon le type
+    if (currentType === 'text') {
+      const content = document.getElementById('message').value.trim();
+      if (!content) {
+        alert('Veuillez écrire un message');
+        return;
+      }
+      hasContent = true;
+      formData.append('content', content);
+    } else {
+      if (!currentFile) {
+        alert('Veuillez sélectionner un fichier');
+        return;
+      }
+      hasContent = true;
+      formData.append('file', currentFile);
+    }
+    
+    // Ajouter l'expiration (60000 ms = 1 minute pour le test)
+    formData.append('expiration', '60000');
+    
+    // Désactiver le bouton pendant l'envoi
+    const generateBtn = document.getElementById('generateBtn');
+    const originalText = generateBtn.textContent;
+    generateBtn.textContent = '⏳ Envoi en cours...';
+    generateBtn.disabled = true;
+    
+    try {
+      const response = await fetch('window.location.origin/api/messages/create', {
+        method: 'POST',
+        body: formData
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || `Erreur HTTP ${response.status}`);
+      }
+      
+      const data = await response.json();
+      const realLink = data.link || data.url || data.messageUrl;
+      
+      if (!realLink) {
+        throw new Error('Le backend n\'a pas retourné de lien');
+      }
+      
+      const id = data.id;
+
+const finalLink =
+  `${window.location.origin}/receive.html?id=${id}`;
+
+document.getElementById('link').value =
+  finalLink;
+      document.getElementById('result').style.display = 'block';
+      document.getElementById('result').scrollIntoView({ behavior: 'smooth' });
+      
+    } catch (error) {
+      console.error('Erreur:', error);
+      alert(`❌ ${error.message}\n\nVérifiez que le backend est lancé sur window.location.origin`);
+    } finally {
+      generateBtn.textContent = originalText;
+      generateBtn.disabled = false;
+    }
+  });
+
+  // Copier le lien
+  document.getElementById('copyBtn').addEventListener('click', () => {
+    const link = document.getElementById('link');
+    link.select();
+    navigator.clipboard.writeText(link.value);
+    const btn = document.getElementById('copyBtn');
+    const originalText = btn.textContent;
+    btn.textContent = '✅ Copié !';
+    setTimeout(() => { btn.textContent = originalText; }, 2000);
+  });
+</script>
+</body>
+</html>

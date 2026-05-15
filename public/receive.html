@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+
+<title>Data-Seal | Lecture unique</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+
+<style>
+
+:root{
+  --bg:#020812;
+  --bg2:#060e1f;
+  --cyan:#00f5ff;
+  --green:#00ff88;
+  --red:#ff2d55;
+  --text:#e8f4ff;
+  --text2:rgba(232,244,255,.6);
+  --border:rgba(0,245,255,.15);
+}
+
+*{
+  margin:0;
+  padding:0;
+  box-sizing:border-box;
+}
+
+body{
+  font-family:'Space Grotesk',sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  min-height:100vh;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  padding:30px;
+  overflow:hidden;
+}
+
+body::before{
+  content:'';
+  position:fixed;
+  inset:0;
+  background:
+  radial-gradient(circle at top left, rgba(0,245,255,.08), transparent 30%),
+  radial-gradient(circle at bottom right, rgba(123,47,255,.08), transparent 30%);
+  pointer-events:none;
+}
+
+.container{
+  width:100%;
+  max-width:700px;
+  background:rgba(6,14,31,.92);
+  border:1px solid var(--border);
+  border-radius:28px;
+  padding:40px;
+  position:relative;
+  z-index:2;
+  backdrop-filter:blur(20px);
+  box-shadow:
+  0 0 30px rgba(0,245,255,.08),
+  0 0 100px rgba(0,245,255,.03);
+}
+
+.badge{
+  display:inline-flex;
+  align-items:center;
+  gap:10px;
+  padding:10px 18px;
+  border-radius:999px;
+  background:rgba(0,245,255,.08);
+  border:1px solid rgba(0,245,255,.2);
+  color:var(--cyan);
+  font-size:.75rem;
+  letter-spacing:.12em;
+  margin-bottom:24px;
+  font-family:'Space Mono',monospace;
+}
+
+.dot{
+  width:8px;
+  height:8px;
+  border-radius:50%;
+  background:var(--green);
+  box-shadow:0 0 12px var(--green);
+}
+
+h1{
+  font-size:3rem;
+  margin-bottom:14px;
+  line-height:1;
+}
+
+h1 span{
+  color:transparent;
+  -webkit-text-stroke:1px var(--cyan);
+}
+
+.subtitle{
+  color:var(--text2);
+  line-height:1.7;
+  margin-bottom:35px;
+}
+
+.message-box{
+  background:rgba(2,8,18,.8);
+  border:1px solid rgba(0,245,255,.08);
+  border-radius:20px;
+  padding:25px;
+  min-height:140px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+  font-size:1rem;
+  font-family:'Space Mono',monospace;
+  word-break:break-word;
+}
+
+.message-box a{
+  color:var(--cyan);
+  text-decoration:none;
+}
+
+.message-box img,
+.message-box video{
+  max-width:100%;
+  border-radius:14px;
+}
+
+.footer{
+  margin-top:30px;
+  text-align:center;
+  color:var(--text2);
+  font-size:.8rem;
+}
+
+.error{
+  color:var(--red);
+}
+
+.success{
+  color:var(--cyan);
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+  <div class="badge">
+    <div class="dot"></div>
+    LECTURE UNIQUE · AUTODESTRUCTION
+  </div>
+
+  <h1>
+    Message <span>reçu</span>
+  </h1>
+
+  <p class="subtitle">
+    Ce message ne peut être lu qu'une seule fois.
+    Après lecture, il sera définitivement supprimé.
+  </p>
+
+  <div id="contentContainer" class="message-box">
+    Chargement sécurisé...
+  </div>
+
+  <div class="footer">
+    DATA-SEAL · AES-256 · SECURE SHARE
+  </div>
+
+</div>
+
+<script>
+
+async function loadMessage() {
+
+  const params = new URLSearchParams(window.location.search);
+
+  const id = params.get('id');
+
+  if (!id) {
+
+    document.getElementById('contentContainer').innerHTML =
+      '<span class="error">❌ ID manquant</span>';
+
+    return;
+  }
+
+  try {
+
+    const response = await fetch(
+      `window.location.origin/api/messages/${id}`
+    );
+
+    const data = await response.json();
+
+    // Message supprimé
+    if (!response.ok || data.error) {
+
+      document.getElementById('contentContainer').innerHTML =
+        '<span class="error">❌ Message supprimé ou expiré</span>';
+
+      return;
+    }
+
+    // Texte
+    if (data.type === 'text') {
+
+      document.getElementById('contentContainer').innerHTML =
+        `<div class="success">${data.content}</div>`;
+
+    } else {
+
+      document.getElementById('contentContainer').innerHTML =
+        `
+        <a href="/uploads/${data.content}" target="_blank">
+          📎 Ouvrir fichier sécurisé
+        </a>
+        `;
+    }
+
+  } catch (error) {
+
+    document.getElementById('contentContainer').innerHTML =
+      '<span class="error">❌ Erreur serveur</span>';
+
+    console.error(error);
+  }
+}
+
+loadMessage();
+
+</script>
+
+</body>
+</html>
