@@ -359,19 +359,59 @@
   }
 
   function displayContent(type, content) {
-    switch(type) {
-      case 'text':
-        return `<div class="message-content">📩 ${escapeHtml(content)}</div>`;
-      case 'image':
-        return `<div class="message-content"><img src="${content}" alt="Message image"></div>`;
-      case 'video':
-        return `<div class="message-content"><video controls autoplay><source src="${content}" type="video/mp4"></video></div>`;
-      case 'file':
-        return `<div class="message-content">📄 Fichier reçu<br><small>Type: document</small><br><a href="${content}" style="color: var(--cyan);" download>Télécharger (unique)</a></div>`;
-      default:
-        return `<div class="message-content">Contenu non reconnu</div>`;
-    }
+
+  switch(type) {
+
+    case 'text':
+      return `
+        <div class="message-content">
+          📩 ${escapeHtml(content)}
+        </div>
+      `;
+
+    case 'image':
+      return `
+        <div class="message-content">
+          <img 
+            src="${content}" 
+            alt="Message image"
+            draggable="false"
+            style="max-width:100%; border-radius:12px;"
+          >
+        </div>
+      `;
+
+    case 'video':
+      return `
+        <div class="message-content">
+          <video 
+            autoplay
+            controls
+            controlsList="nodownload"
+            style="max-width:100%; border-radius:12px;"
+          >
+            <source src="${content}" type="video/mp4">
+          </video>
+        </div>
+      `;
+
+    case 'audio':
+      return `
+        <div class="message-content">
+          <audio controls controlsList="nodownload">
+            <source src="${content}">
+          </audio>
+        </div>
+      `;
+
+    default:
+      return `
+        <div class="message-content">
+          Contenu non reconnu
+        </div>
+      `;
   }
+}
 
   function escapeHtml(str) {
     if (!str) return '';
