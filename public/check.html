@@ -535,25 +535,25 @@
   // ========== APPELS API RÉELS VERS LE BACKEND ==========
 
   async function checkEmail(email) {
-    const response = await fetch(`window.location.origin/check/email/${encodeURIComponent(email)}`);
+    const response = await fetch(`${window.location.origin}/check/email/${encodeURIComponent(email)}`);
     if (!response.ok) throw new Error(`Erreur HTTP ${response.status}`);
     return await response.json();
   }
 
   async function checkPhone(phone) {
-    const response = await fetch(`window.location.origin/check/phone/${encodeURIComponent(phone)}`);
+    const response = await fetch(`${window.location.origin}/check/phone/${encodeURIComponent(phone)}`);
     if (!response.ok) throw new Error(`Erreur HTTP ${response.status}`);
     return await response.json();
   }
 
   async function checkPassword(password) {
-    const response = await fetch(`window.location.origin/check/password/${encodeURIComponent(password)}`);
+    const response = await fetch(`${window.location.origin}/check/password/${encodeURIComponent(password)}`);
     if (!response.ok) throw new Error(`Erreur HTTP ${response.status}`);
     return await response.json();
   }
 
   async function checkCin(cin) {
-    const response = await fetch(`window.location.origin/check/cin/${encodeURIComponent(cin)}`);
+    const response = await fetch(`${window.location.origin}/check/cin/${encodeURIComponent(cin)}`);
     if (!response.ok) throw new Error(`Erreur HTTP ${response.status}`);
     return await response.json();
   }
