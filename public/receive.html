@@ -1,243 +1,442 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Data-Seal | Lecture unique</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:       #020812;
+      --bg-2:     #060e1f;
+      --cyan:     #00f5ff;
+      --cyan-d:   #00bcd4;
+      --blue:     #0066ff;
+      --purple:   #7b2fff;
+      --green:    #00ff88;
+      --red:      #ff2d55;
+      --orange:   #ff9500;
+      --text:     #e8f4ff;
+      --text-2:   rgba(232,244,255,0.55);
+      --text-3:   rgba(232,244,255,0.25);
+      --border:   rgba(0,245,255,0.12);
+      --border-h: rgba(0,245,255,0.35);
+      --r:        16px;
+      --r-lg:     28px;
+    }
 
-<title>Data-Seal | Lecture unique</title>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    body {
+      font-family: 'Space Grotesk', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+      cursor: none;
+    }
 
-<style>
+    .cursor {
+      position: fixed;
+      width: 10px; height: 10px;
+      background: var(--cyan);
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 9999;
+      transform: translate(-50%,-50%);
+      transition: width .2s, height .2s;
+      mix-blend-mode: screen;
+      box-shadow: 0 0 10px var(--cyan), 0 0 30px rgba(0,245,255,.4);
+    }
+    .cursor-ring {
+      position: fixed;
+      width: 36px; height: 36px;
+      border: 1px solid rgba(0,245,255,.5);
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 9998;
+      transform: translate(-50%,-50%);
+      transition: all .12s ease;
+    }
 
-:root{
-  --bg:#020812;
-  --bg2:#060e1f;
-  --cyan:#00f5ff;
-  --green:#00ff88;
-  --red:#ff2d55;
-  --text:#e8f4ff;
-  --text2:rgba(232,244,255,.6);
-  --border:rgba(0,245,255,.15);
-}
+    #bg-canvas {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+    }
 
-*{
-  margin:0;
-  padding:0;
-  box-sizing:border-box;
-}
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,245,255,.012) 2px, rgba(0,245,255,.012) 4px);
+      pointer-events: none;
+      z-index: 1;
+      animation: scanMove 8s linear infinite;
+    }
+    @keyframes scanMove {
+      0%   { background-position: 0 0; }
+      100% { background-position: 0 200px; }
+    }
 
-body{
-  font-family:'Space Grotesk',sans-serif;
-  background:var(--bg);
-  color:var(--text);
-  min-height:100vh;
-  display:flex;
-  justify-content:center;
-  align-items:center;
-  padding:30px;
-  overflow:hidden;
-}
+    .wrapper {
+      position: relative;
+      z-index: 2;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 3rem 2rem;
+    }
 
-body::before{
-  content:'';
-  position:fixed;
-  inset:0;
-  background:
-  radial-gradient(circle at top left, rgba(0,245,255,.08), transparent 30%),
-  radial-gradient(circle at bottom right, rgba(123,47,255,.08), transparent 30%);
-  pointer-events:none;
-}
+    .status-bar {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: .6rem 2rem;
+      background: rgba(2,8,18,.85);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+      font-family: 'Space Mono', monospace;
+      font-size: .7rem;
+      color: var(--text-2);
+    }
+    .status-bar .dot {
+      display: inline-block;
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--green);
+      margin-right: 6px;
+      box-shadow: 0 0 8px var(--green);
+      animation: blink 2s infinite;
+    }
+    @keyframes blink {
+      0%,100%{ opacity:1; } 50%{ opacity:.3; }
+    }
+    .status-id { color: var(--cyan); }
 
-.container{
-  width:100%;
-  max-width:700px;
-  background:rgba(6,14,31,.92);
-  border:1px solid var(--border);
-  border-radius:28px;
-  padding:40px;
-  position:relative;
-  z-index:2;
-  backdrop-filter:blur(20px);
-  box-shadow:
-  0 0 30px rgba(0,245,255,.08),
-  0 0 100px rgba(0,245,255,.03);
-}
+    .hero { text-align: center; margin-bottom: 2rem; margin-top: 2rem; }
 
-.badge{
-  display:inline-flex;
-  align-items:center;
-  gap:10px;
-  padding:10px 18px;
-  border-radius:999px;
-  background:rgba(0,245,255,.08);
-  border:1px solid rgba(0,245,255,.2);
-  color:var(--cyan);
-  font-size:.75rem;
-  letter-spacing:.12em;
-  margin-bottom:24px;
-  font-family:'Space Mono',monospace;
-}
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: .5rem;
+      background: rgba(0,245,255,.07);
+      border: 1px solid rgba(0,245,255,.25);
+      border-radius: 99px;
+      padding: .35rem 1rem;
+      font-family: 'Space Mono', monospace;
+      font-size: .7rem;
+      color: var(--cyan);
+      letter-spacing: .12em;
+      margin-bottom: 1.5rem;
+      animation: fadeUp .6s ease both;
+    }
+    .badge-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--cyan);
+      box-shadow: 0 0 8px var(--cyan);
+      animation: blink 1.5s infinite;
+    }
 
-.dot{
-  width:8px;
-  height:8px;
-  border-radius:50%;
-  background:var(--green);
-  box-shadow:0 0 12px var(--green);
-}
+    .hero-title {
+      font-size: clamp(3rem, 6vw, 4.5rem);
+      font-weight: 700;
+      letter-spacing: -.04em;
+      line-height: 1;
+      margin-bottom: 1rem;
+      animation: fadeUp .6s .1s ease both;
+    }
+    .hero-title .word-data { color: var(--text); }
+    .hero-title .word-seal {
+      color: transparent;
+      -webkit-text-stroke: 1px var(--cyan);
+      text-shadow: 0 0 20px rgba(0,245,255,.3), 0 0 60px rgba(0,245,255,.15);
+    }
 
-h1{
-  font-size:3rem;
-  margin-bottom:14px;
-  line-height:1;
-}
+    .hero-subtitle {
+      font-size: 1rem;
+      color: var(--text-2);
+      max-width: 500px;
+      margin: 0 auto;
+      line-height: 1.7;
+      animation: fadeUp .6s .2s ease both;
+    }
 
-h1 span{
-  color:transparent;
-  -webkit-text-stroke:1px var(--cyan);
-}
+    .content-card {
+      background: linear-gradient(135deg, rgba(6,14,31,.95), rgba(6,14,31,.8));
+      border: 1px solid var(--border);
+      border-radius: var(--r-lg);
+      padding: 2rem;
+      max-width: 700px;
+      width: 100%;
+      margin: 0 auto;
+      animation: fadeUp .6s .35s ease both;
+      text-align: center;
+    }
 
-.subtitle{
-  color:var(--text2);
-  line-height:1.7;
-  margin-bottom:35px;
-}
+    .message-content {
+      background: rgba(2,8,18,0.8);
+      border-radius: 20px;
+      padding: 24px;
+      margin: 20px 0;
+      word-wrap: break-word;
+      font-family: 'Space Mono', monospace;
+      font-size: 1rem;
+      color: var(--cyan);
+    }
 
-.message-box{
-  background:rgba(2,8,18,.8);
-  border:1px solid rgba(0,245,255,.08);
-  border-radius:20px;
-  padding:25px;
-  min-height:140px;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  text-align:center;
-  font-size:1rem;
-  font-family:'Space Mono',monospace;
-  word-break:break-word;
-}
+    .message-content img, .message-content video {
+      max-width: 100%;
+      max-height: 300px;
+      border-radius: 12px;
+    }
 
-.message-box a{
-  color:var(--cyan);
-  text-decoration:none;
-}
+    .info-badge {
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      margin-top: 20px;
+      font-size: 0.7rem;
+      color: var(--text-3);
+      flex-wrap: wrap;
+    }
 
-.message-box img,
-.message-box video{
-  max-width:100%;
-  border-radius:14px;
-}
+    .footer {
+      margin-top: 3rem;
+      text-align: center;
+    }
+    .footer a {
+      color: var(--cyan);
+      text-decoration: none;
+      font-family: 'Space Mono', monospace;
+      font-size: 0.8rem;
+    }
 
-.footer{
-  margin-top:30px;
-  text-align:center;
-  color:var(--text2);
-  font-size:.8rem;
-}
+    @keyframes fadeUp {
+      from { opacity:0; transform:translateY(24px); }
+      to { opacity:1; transform:translateY(0); }
+    }
 
-.error{
-  color:var(--red);
-}
-
-.success{
-  color:var(--cyan);
-}
-
-</style>
+    @media(max-width:600px){
+      .hero-title { font-size: 2.5rem; }
+      .content-card { padding: 1.5rem; }
+    }
+  </style>
 </head>
-
 <body>
 
-<div class="container">
+<div class="cursor" id="cur"></div>
+<div class="cursor-ring" id="curRing"></div>
+<canvas id="bg-canvas"></canvas>
 
-  <div class="badge">
-    <div class="dot"></div>
-    LECTURE UNIQUE · AUTODESTRUCTION
+<div class="status-bar">
+  <div><span class="dot"></span><span class="status-id">SYS-SEAL-2025</span> · Lecture sécurisée · Unique</div>
+  <div id="clock" style="font-size:.65rem;opacity:.6;"></div>
+</div>
+
+<div class="wrapper">
+  <div class="hero">
+    <div class="badge">
+      <span class="badge-dot"></span>
+      LECTURE UNIQUE · AUTODESTRUCTION · CHIFFREMENT AES-256
+    </div>
+    <h1 class="hero-title">
+      <span class="word-data">Message</span><span class="word-seal"> reçu</span>
+    </h1>
+    <p class="hero-subtitle">
+      Ce message ne peut être lu qu'une seule fois. Après lecture, il sera définitivement supprimé.
+    </p>
   </div>
 
-  <h1>
-    Message <span>reçu</span>
-  </h1>
-
-  <p class="subtitle">
-    Ce message ne peut être lu qu'une seule fois.
-    Après lecture, il sera définitivement supprimé.
-  </p>
-
-  <div id="contentContainer" class="message-box">
-    Chargement sécurisé...
+  <div class="content-card">
+    <div id="contentContainer">
+      <p style="color: var(--text-2);">Chargement du message...</p>
+    </div>
+    <div class="info-badge">
+      <span>🔐 Chiffré AES-256</span>
+      <span>🗑️ Autodestruction après lecture</span>
+      <span>👁️ Zéro trace</span>
+    </div>
   </div>
 
   <div class="footer">
-    DATA-SEAL · AES-256 · SECURE SHARE
+    <a href="index.html">← Retour à l'accueil</a>
   </div>
-
 </div>
 
 <script>
+  // Horloge
+  function updateClock(){
+    const n=new Date();
+    document.getElementById('clock').textContent=n.toLocaleDateString('fr-FR')+' · '+n.toLocaleTimeString('fr-FR');
+  }
+  updateClock(); setInterval(updateClock,1000);
 
-async function loadMessage() {
+  // Curseur personnalisé
+  const cur=document.getElementById('cur');
+  const ring=document.getElementById('curRing');
+  let mx=-100,my=-100,rx=-100,ry=-100;
+  document.addEventListener('mousemove',e=>{mx=e.clientX;my=e.clientY;});
+  function animCursor(){
+    cur.style.left=mx+'px'; cur.style.top=my+'px';
+    rx+=(mx-rx)*.14; ry+=(my-ry)*.14;
+    ring.style.left=rx+'px'; ring.style.top=ry+'px';
+    requestAnimationFrame(animCursor);
+  }
+  animCursor();
 
-  const params = new URLSearchParams(window.location.search);
+  // Canvas fond
+  const canvas=document.getElementById('bg-canvas');
+  const ctx=canvas.getContext('2d');
+  let W,H,particles=[];
 
-  const id = params.get('id');
+  function resize(){
+    W=canvas.width=window.innerWidth;
+    H=canvas.height=window.innerHeight;
+  }
+  resize(); window.addEventListener('resize',resize);
 
-  if (!id) {
-
-    document.getElementById('contentContainer').innerHTML =
-      '<span class="error">❌ ID manquant</span>';
-
-    return;
+  function drawGrid(){
+    ctx.strokeStyle='rgba(0,245,255,0.04)';
+    ctx.lineWidth=1;
+    const sz=60;
+    for(let x=0;x<W;x+=sz){
+      ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke();
+    }
+    for(let y=0;y<H;y+=sz){
+      ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke();
+    }
   }
 
-  try {
+  for(let i=0;i<50;i++){
+    particles.push({
+      x:Math.random()*W, y:Math.random()*H,
+      r:Math.random()*1.5+.3,
+      dx:(Math.random()-.5)*.3, dy:(Math.random()-.5)*.3,
+      alpha:Math.random(),
+      color:'0,245,255'
+    });
+  }
 
-    const response = await fetch(
-      `window.location.origin/api/messages/${id}`
-    );
+  let scanY=0;
+  function loop(){
+    ctx.clearRect(0,0,W,H);
+    drawGrid();
+    scanY=(scanY+1.5)%H;
+    const sg=ctx.createLinearGradient(0,scanY-40,0,scanY+40);
+    sg.addColorStop(0,'rgba(0,245,255,0)');
+    sg.addColorStop(.5,'rgba(0,245,255,0.04)');
+    sg.addColorStop(1,'rgba(0,245,255,0)');
+    ctx.fillStyle=sg;
+    ctx.fillRect(0,scanY-40,W,80);
 
-    const data = await response.json();
+    particles.forEach(p=>{
+      p.x+=p.dx; p.y+=p.dy;
+      if(p.x<0)p.x=W; if(p.x>W)p.x=0;
+      if(p.y<0)p.y=H; if(p.y>H)p.y=0;
+      ctx.beginPath();
+      ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+      ctx.fillStyle=`rgba(${p.color},${p.alpha})`;
+      ctx.fill();
+    });
+    requestAnimationFrame(loop);
+  }
+  loop();
 
-    // Message supprimé
-    if (!response.ok || data.error) {
+  // ========== LOGIQUE BACKEND ==========
+  
+  function getMessageId() {
+    const urlParams = new URLSearchParams(window.location.search);
+    return urlParams.get('id');
+  }
 
-      document.getElementById('contentContainer').innerHTML =
-        '<span class="error">❌ Message supprimé ou expiré</span>';
+  function displayContent(type, content) {
+    switch(type) {
+      case 'text':
+        return `<div class="message-content">📩 ${escapeHtml(content)}</div>`;
+      case 'image':
+        return `<div class="message-content"><img src="${content}" alt="Message image"></div>`;
+      case 'video':
+        return `<div class="message-content"><video controls autoplay><source src="${content}" type="video/mp4"></video></div>`;
+      case 'file':
+        return `<div class="message-content">📄 Fichier reçu<br><small>Type: document</small><br><a href="${content}" style="color: var(--cyan);" download>Télécharger (unique)</a></div>`;
+      default:
+        return `<div class="message-content">Contenu non reconnu</div>`;
+    }
+  }
 
+  function escapeHtml(str) {
+    if (!str) return '';
+    return str.replace(/[&<>]/g, function(m) {
+      if (m === '&') return '&amp;';
+      if (m === '<') return '&lt;';
+      if (m === '>') return '&gt;';
+      return m;
+    });
+  }
+
+  let messageConsumed = false;
+
+  async function loadMessage() {
+    const id = getMessageId();
+    
+    if (!id) {
+      document.getElementById('contentContainer').innerHTML = `
+        <div class="message-content" style="color: var(--red);">
+          ❌ Aucun message spécifié<br>
+          Lien invalide.
+        </div>
+      `;
       return;
     }
-
-    // Texte
-    if (data.type === 'text') {
-
-      document.getElementById('contentContainer').innerHTML =
-        `<div class="success">${data.content}</div>`;
-
-    } else {
-
-      document.getElementById('contentContainer').innerHTML =
-        `
-        <a href="/uploads/${data.content}" target="_blank">
-          📎 Ouvrir fichier sécurisé
-        </a>
+    
+    try {
+      const response = await fetch(`${window.location.origin}/api/messages/${id}`);
+      
+      if (response.status === 404) {
+        document.getElementById('contentContainer').innerHTML = `
+          <div class="message-content" style="color: var(--red);">
+            🚫 Ce message n'existe plus ou a déjà été lu.<br>
+            La destruction est définitive et irréversible.
+          </div>
         `;
+        return;
+      }
+      
+      if (!response.ok) {
+        throw new Error(`Erreur HTTP ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      if (messageConsumed) {
+        return;
+      }
+      messageConsumed = true;
+      
+      const contentHtml = displayContent(data.type, data.content);
+      document.getElementById('contentContainer').innerHTML = contentHtml;
+      
+    } catch (error) {
+      console.error('Erreur:', error);
+      document.getElementById('contentContainer').innerHTML = `
+        <div class="message-content" style="color: var(--red);">
+          ❌ Erreur de connexion au serveur<br>
+          Vérifiez que le backend est lancé.
+        </div>
+      `;
     }
-
-  } catch (error) {
-
-    document.getElementById('contentContainer').innerHTML =
-      '<span class="error">❌ Erreur serveur</span>';
-
-    console.error(error);
   }
-}
-
-loadMessage();
-
+  
+  loadMessage();
 </script>
-
 </body>
 </html>

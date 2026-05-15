@@ -1,83 +1,98 @@
 // p3-messages.js
 
 const crypto = require('crypto');
+const path = require('path');
 
-// Objet qui stocke tous les messages
+// Stockage temporaire des messages
 const messages = {};
 
 /*
 ====================================================
-FONCTION : STOCKER UN MESSAGE
+STOCKER UN MESSAGE
 ====================================================
-type :
+
+type:
 - text
 - image
 - video
-- audio
-- pdf
+- file
 
-content :
-- texte du message
-OU
-- chemin du fichier
+content:
+- texte OU chemin fichier
+
+expiration:
+- durée en millisecondes
+- null = pas d'expiration temporelle
 ====================================================
 */
 
-function storeMessage(type, content) {
+function storeMessage(type, content, expiration = null) {
 
-    // Générer un ID unique
+    // Générer ID unique
     const id = crypto.randomUUID();
 
-    // Expiration après 24 heures
-    const expiresAt = Date.now() + 60 * 1000;
-
-    // Stockage du message
+    // Création du message
     messages[id] = {
+        id,
         type,
         content,
-        expiresAt
+
+        createdAt: Date.now(),
+
+        // null = pas d'expiration
+        expiresAt: expiration
+            ? Date.now() + Number(expiration)
+            : null
     };
 
-    // Retourner l'ID
+    console.log(`✅ Message stocké : ${id}`);
+
     return id;
 }
 
 /*
 ====================================================
-FONCTION : LIRE ET SUPPRIMER LE MESSAGE
+LIRE + SUPPRIMER LE MESSAGE
 ====================================================
 */
 
 function getAndDeleteMessage(id) {
 
-    const entry = messages[id];
+    const message = messages[id];
 
-    // Vérifier si le message existe
-    if (!entry) {
+    // Message inexistant
+    if (!message) {
         return null;
     }
 
     // Vérifier expiration
-    if (entry.expiresAt < Date.now()) {
+    if (
+        message.expiresAt &&
+        message.expiresAt < Date.now()
+    ) {
 
         delete messages[id];
+
+        console.log(`⏰ Message expiré : ${id}`);
 
         return null;
     }
 
-    // Supprimer le message après lecture
+    // Supprimer après lecture
     delete messages[id];
 
-    // Retourner les données
+    console.log(`🗑️ Message supprimé après lecture : ${id}`);
+
     return {
-        type: entry.type,
-        content: entry.content
+        id: message.id,
+        type: message.type,
+        content: message.content
     };
 }
 
 /*
 ====================================================
-NETTOYAGE AUTOMATIQUE DES MESSAGES EXPIRÉS
+NETTOYAGE AUTOMATIQUE
 ====================================================
 */
 
@@ -87,19 +102,24 @@ setInterval(() => {
 
     for (const id in messages) {
 
-        if (messages[id].expiresAt < now) {
+        const msg = messages[id];
+
+        if (
+            msg.expiresAt &&
+            msg.expiresAt < now
+        ) {
 
             delete messages[id];
 
-            console.log(`Message expiré supprimé : ${id}`);
+            console.log(`🧹 Message expiré supprimé : ${id}`);
         }
     }
 
-}, 60 * 60 * 1000); // Vérification chaque heure
+}, 60 * 1000); // chaque minute
 
 /*
 ====================================================
-EXPORT DES FONCTIONS
+EXPORT
 ====================================================
 */
 
